@@ -8,6 +8,12 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
+      - name: Verify Supabase build secrets
+        run: |
+          if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ] || [ -z "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ]; then
+            echo "::error::Set the VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY repository secrets; Vite inlines them at build time and the app fails with 'Invalid Compact JWS' without them."
+            exit 1
+          fi
       - run: npm install
       - run: npm run build
         env:
@@ -30,6 +36,12 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+      - name: Verify Supabase build secrets
+        run: |
+          if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ] || [ -z "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ]; then
+            echo "::error::Set the VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY repository secrets; the APK bundles them at build time and uploads fail with 'Invalid Compact JWS' without them."
+            exit 1
+          fi
       - run: npm install
       - name: Build web assets
         run: npm run build

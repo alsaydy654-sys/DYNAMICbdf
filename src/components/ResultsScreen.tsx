@@ -47,6 +47,17 @@ export default function ResultsScreen({
       };
     }
     if (
+      errorMessage.includes("Compact JWS") ||
+      errorMessage.includes("JWT") ||
+      errorMessage.includes("API key") ||
+      errorMessage.includes("VITE_SUPABASE")
+    ) {
+      return {
+        cause: "مفتاح أو عنوان Supabase غير صالح في نسخة التطبيق الحالية",
+        fix: "اضبط VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY (Project Settings → API) في بيئة البناء: متغيّرات Vercel أو GitHub Secrets أو ملف .env محلياً، ثم أعد بناء التطبيق — القيم تُدمج وقت البناء وليس وقت التشغيل.",
+      };
+    }
+    if (
       errorMessage.includes("network") ||
       errorMessage.includes("fetch") ||
       errorMessage.includes("timeout") ||

@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { supabase, supabaseConfigError } from "./supabase";
 import { AppConfig, PageRecord } from "../types";
 import { withDeadline, withRetry } from "./retry";
 
@@ -24,6 +24,8 @@ export async function syncPage(
   context: SyncContext,
   hooks: SyncHooks = {}
 ): Promise<{ insertedId: string | null }> {
+  if (supabaseConfigError) throw new Error(supabaseConfigError);
+
   // 1) رفع الصورة — upsert يجعل إعادة المحاولة آمنة بعد انقطاع الشبكة
   const storagePath = await withRetry(
     async () => {
