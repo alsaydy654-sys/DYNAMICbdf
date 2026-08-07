@@ -70,6 +70,16 @@ export function sanitizePathSegment(text: string): string {
     .replace(/^_+|_+$/g, ""); // إزالة underscores من البداية والنهاية
 }
 
+// دالة تطهير أسماء الأعمدة قبل استخدامها في الاستعلامات
+export function sanitizeColumnName(col: string): string {
+  return col
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^\w_]/g, '')
+    .replace(/^_+|_+$/g, '');
+}
+
 export function buildFileName(index: number, config: AppConfig): string {
   const padded = padIndex(index, config.zeroPadDigits);
   const prefix = config.customPrefix || "";
