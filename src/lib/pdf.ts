@@ -5,6 +5,8 @@ import { buildFileName, buildStoragePath } from "../config";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
+const EMPTY_BLOB = new Blob([]);
+
 export interface PdfParseContext {
   grade: string;
   term: string;
@@ -15,7 +17,7 @@ export async function parsePdfToImages(
   file: File,
   config: AppConfig,
   context: PdfParseContext,
-  onPage: (record: PageRecord, total: number) => void
+  onPage: (record: PageRecord, total: number) => void | Promise<void>
 ): Promise<PageRecord[]> {
   const arrayBuffer = await file.arrayBuffer();
   const loadingTask = pdfjsLib.getDocument({
@@ -65,8 +67,9 @@ export async function parsePdfToImages(
       blob,
       status: "pending",
     };
-    records.push(record);
-    onPage(record, total);
+    // نعالج الصفحة فوراً ثم نُسقط مرجع الـ blob حتى لا تتراكم صور الكتاب في الذاكرة
+    await onPage(record, total);
+    records.push({ ...record, blob: EMPTY_BLOB });
 
     canvas.width = 0;
     canvas.height = 0;

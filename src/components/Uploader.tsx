@@ -64,6 +64,55 @@ export default function Uploader({ config, onViewGallery }: Props) {
   const canStart = !!file && !running;
   const livePreview = previewPath(config, grade, term);
 
+  const mergeResults = (newResults: ResultLog[]) =>
+    setResults((prev) => {
+      const map = new Map<number, ResultLog>();
+      for (const r of prev) if (r.status === "success") map.set(r.pageNumber, r);
+      for (const r of newResults) map.set(r.pageNumber, r);
+      return Array.from(map.values()).sort((a, b) => a.pageNumber - b.pageNumber);
+    });
+
+  /** رفع صفحة واحدة مع إعادة المحاولة التلقائية؛ لا يرمي استثناءً بل يسجّل النتيجة. */
+  const uploadOne = async (
+    rec: PageRecord,
+    ctx: { grade: string; term: string; bookTitle: string; file: File }
+  ): Promise<ResultLog> => {
+    setCurrentLabel(`${rec.fileName} → ${rec.storagePath}`);
+    updatePage(rec.index, { status: "processing", error: undefined });
+    try {
+      const { insertedId } = await syncPage(
+        rec,
+        config,
+        {
+          grade: ctx.grade,
+          term: ctx.term,
+          bookTitle: ctx.bookTitle,
+          originalPdfName: ctx.file.name,
+        },
+        {
+          onRetry: ({ attempt, attempts, delayMs, message }) =>
+            pushLog(
+              "warning",
+              `تعذّر رفع ${rec.fileName} (محاولة ${attempt}/${attempts}): ${message} — إعادة المحاولة بعد ${Math.round(delayMs / 1000)}ث`
+            ),
+        }
+      );
+      // نُفرغ الـ blob بعد النجاح لتحرير الذاكرة في الكتب الكبيرة
+      updatePage(rec.index, {
+        status: "done",
+        insertedId: insertedId ?? undefined,
+        blob: new Blob([]),
+      });
+      pushLog("success", `رفع ${rec.fileName} إلى ${rec.storagePath}`);
+      return { pageNumber: rec.pageNumber, status: "success", message: `رفعت إلى ${rec.storagePath}` };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      updatePage(rec.index, { status: "failed", error: msg });
+      pushLog("error", `فشل ${rec.fileName}: ${msg}`);
+      return { pageNumber: rec.pageNumber, status: "error", message: msg };
+    }
+  };
+
   const runUpload = async (
     records: PageRecord[],
     ctx: { grade: string; term: string; bookTitle: string; file: File }
@@ -71,35 +120,11 @@ export default function Uploader({ config, onViewGallery }: Props) {
     pushLog("info", `بدء الرفع إلى حاوية "${config.storageBucket}" والجدول "${config.tableName}"`);
 
     const newResults: ResultLog[] = [];
-
     for (const rec of records) {
       if (cancelRef.current) break;
-      setCurrentLabel(`${rec.fileName} → ${rec.storagePath}`);
-      updatePage(rec.index, { status: "processing" });
-      try {
-        const { insertedId } = await syncPage(rec, config, {
-          grade: ctx.grade,
-          term: ctx.term,
-          bookTitle: ctx.bookTitle,
-          originalPdfName: ctx.file.name,
-        });
-        updatePage(rec.index, { status: "done", insertedId: insertedId ?? undefined });
-        pushLog("success", `رفع ${rec.fileName} إلى ${rec.storagePath}`);
-        newResults.push({ pageNumber: rec.pageNumber, status: "success", message: `رفعت إلى ${rec.storagePath}` });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        updatePage(rec.index, { status: "failed", error: msg });
-        pushLog("error", `فشل ${rec.fileName}: ${msg}`);
-        newResults.push({ pageNumber: rec.pageNumber, status: "error", message: msg });
-      }
+      newResults.push(await uploadOne(rec, ctx));
     }
-
-    setResults((prev) => {
-      const map = new Map<number, ResultLog>();
-      for (const r of prev) if (r.status === "success") map.set(r.pageNumber, r);
-      for (const r of newResults) map.set(r.pageNumber, r);
-      return Array.from(map.values()).sort((a, b) => a.pageNumber - b.pageNumber);
-    });
+    mergeResults(newResults);
   };
 
   const handleStart = async () => {
@@ -119,27 +144,20 @@ export default function Uploader({ config, onViewGallery }: Props) {
     lastCtxRef.current = ctx;
 
     try {
-      const records: PageRecord[] = [];
+      // خط أنابيب: كل صفحة تُرفع فور تحويلها، فلا يُحتفظ بالكتاب كاملاً في الذاكرة
+      const streamResults: ResultLog[] = [];
       await parsePdfToImages(
         file,
         config,
         { grade, term, bookTitle: ctxBookTitle },
-        (record, totalP) => {
+        async (record, totalP) => {
           if (cancelRef.current) return;
-          records.push(record);
           setPages((prev) => [...prev, record]);
           pushLog("info", `تم تحويل الصفحة ${record.pageNumber} من ${totalP} → ${record.fileName}`);
+          streamResults.push(await uploadOne(record, ctx));
         }
       );
-
-      if (cancelRef.current) {
-        pushLog("warning", "ألغى المستخدم العملية بعد التحويل");
-        setRunning(false);
-        setPhase("results");
-        return;
-      }
-
-      await runUpload(records, ctx);
+      mergeResults(streamResults);
 
       if (cancelRef.current) pushLog("warning", "تم إيقاف العملية");
       else pushLog("success", "اكتملت المعالجة والرفع بنجاح");

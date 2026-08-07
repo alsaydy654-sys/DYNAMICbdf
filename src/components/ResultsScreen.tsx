@@ -49,11 +49,13 @@ export default function ResultsScreen({
     if (
       errorMessage.includes("network") ||
       errorMessage.includes("fetch") ||
-      errorMessage.includes("timeout")
+      errorMessage.includes("timeout") ||
+      errorMessage.includes("timed out") ||
+      errorMessage.includes("Load failed")
     ) {
       return {
-        cause: "انقطاع أو بطء في اتصال الإنترنت",
-        fix: "تحقق من اتصال الإنترنت لديك، وربما تحتاج لرفع الكتاب على دفعات إن كان حجم الملف كبيراً جداً.",
+        cause: "انقطاع أو بطء في اتصال الإنترنت (بعد 5 محاولات تلقائية)",
+        fix: "التطبيق يعيد المحاولة تلقائياً وينتظر عودة الاتصال، والرفع يتم صفحة بصفحة فلا حاجة لتقسيم الكتاب. تحقق من الاتصال ثم اضغط «إعادة محاولة الصفحات الفاشلة» — الصفحات الناجحة لا تُرفع مرتين.",
       };
     }
     return {
