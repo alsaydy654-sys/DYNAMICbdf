@@ -28,6 +28,22 @@ export default function ResultsScreen({
 
   const getTroubleshootingAdvice = (errorMessage: string) => {
     if (
+      errorMessage.includes("(404)") ||
+      errorMessage.includes("Failed to send a request to the Edge Function") ||
+      (errorMessage.includes("Ingest") && errorMessage.includes("Failed to fetch"))
+    ) {
+      return {
+        cause: "خدمة الاستقبال (Edge Function) غير منشورة أو عنوانها غير صحيح",
+        fix: "انشر الدالة عبر supabase functions deploy curriculum-ingest --no-verify-jwt، واضبط INGEST_ADMIN_TOKEN، ثم تأكد من مطابقة الرابط في الإعدادات → رفع إلى سراج.",
+      };
+    }
+    if (errorMessage.includes("(401)") || errorMessage.includes("Unauthorized")) {
+      return {
+        cause: "التوكن الإداري غير صحيح (رفضته خدمة الاستقبال)",
+        fix: "تأكد من تطابق التوكن في الإعدادات مع قيمة INGEST_ADMIN_TOKEN المضبوطة في أسرار Supabase.",
+      };
+    }
+    if (
       errorMessage.includes("row-level security") ||
       errorMessage.includes("RLS") ||
       errorMessage.includes("permission")
@@ -150,6 +166,11 @@ export default function ResultsScreen({
                     <div className="rounded-lg border border-rose-100 bg-white/80 p-3">
                       <span className="mb-1 block font-bold text-slate-700">السبب المحتمل:</span>
                       <span className="break-all font-mono text-rose-700">{diagnosis.cause}</span>
+                      {log.message && log.message !== diagnosis.cause && (
+                        <span className="mt-2 block break-all font-mono text-[11px] text-slate-500">
+                          {log.message}
+                        </span>
+                      )}
                     </div>
                     <div className="rounded-lg border border-emerald-100 bg-white/80 p-3">
                       <span className="mb-1 block font-bold text-slate-700">كيفية الإصلاح:</span>
