@@ -170,6 +170,8 @@ export default function SirajUploader({ config }: Props) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       pushLog("error", `خطأ: ${msg}`);
+      // سجلّ الأخطاء لا يُعرض في شاشة النتائج، فنمرّر الخطأ القاتل كنتيجة لئلا يظهر نجاح وهمي
+      setResults((prev) => [...prev, { pageNumber: 0, status: "error", message: msg }]);
       setPhase("results");
     } finally {
       setRunning(false);
@@ -228,15 +230,21 @@ export default function SirajUploader({ config }: Props) {
             </div>
             <div>
               <label className="label">الصف</label>
-              <select className="input" value={grade} onChange={(e) => setGrade(e.target.value)} disabled={running}>
+              <select className="input" value={grade} onChange={(e) => setGrade(e.target.value)} disabled={running || grades.length === 0}>
                 {grades.map((g) => (<option key={g} value={g}>{g}</option>))}
               </select>
+              {curriculum && grades.length === 0 && (
+                <p className="mt-1 text-xs text-amber-700">لا توجد صفوف لهذا المنهج في سراج.</p>
+              )}
             </div>
             <div>
               <label className="label">المادة</label>
-              <select className="input" value={subject} onChange={(e) => setSubject(e.target.value)} disabled={running}>
+              <select className="input" value={subject} onChange={(e) => setSubject(e.target.value)} disabled={running || subjects.length === 0}>
                 {subjects.map((s) => (<option key={s} value={s}>{s}</option>))}
               </select>
+              {grade && subjects.length === 0 && (
+                <p className="mt-1 text-xs text-amber-700">لا توجد مواد لهذا الصف في سراج.</p>
+              )}
             </div>
           </div>
 

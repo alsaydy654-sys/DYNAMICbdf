@@ -22,15 +22,23 @@ export interface Subject {
   name: string;
 }
 
-/** أسماء المناهج المتاحة؛ الأسماء مكرّرة بين النسخ فنُرجع أسماءً فريدة. */
+/**
+ * أسماء المناهج الصالحة للرفع: التي تملك صفوفاً فعلاً.
+ * الأسماء مكرّرة بين نسخ المناهج، ومنها ما لا صفوف له إطلاقاً، فنشتقّها من `grades`
+ * حتى لا يقع الاختيار على منهج تظهر قوائمه فارغة.
+ */
 export async function fetchCurriculumNames(): Promise<string[]> {
   const { data, error } = await supabase
-    .from("curricula")
-    .select("id,name,version")
-    .eq("is_active", true)
-    .order("created_at", { ascending: false });
+    .from("grades")
+    .select("curricula!inner(name,is_active)")
+    .eq("curricula.is_active", true);
   if (error) throw new Error(`تعذّر قراءة المناهج من سراج: ${error.message}`);
-  return Array.from(new Set((data as Curriculum[]).map((c) => c.name)));
+  // يُرجِع PostgREST العلاقة ككائن واحد، وإن كان نوع العميل يصفها مصفوفة
+  const rows = data as unknown as { curricula: { name: string } | { name: string }[] }[];
+  const names = rows.flatMap((row) =>
+    Array.isArray(row.curricula) ? row.curricula.map((c) => c.name) : [row.curricula.name]
+  );
+  return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b, "ar"));
 }
 
 export async function fetchGradeNames(curriculumName: string): Promise<string[]> {

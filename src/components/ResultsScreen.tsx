@@ -22,8 +22,9 @@ export default function ResultsScreen({
 }: Props) {
   const successCount = logs.filter((l) => l.status === "success").length;
   const errorLogs = logs.filter((l) => l.status === "error");
-  const hasErrors = errorLogs.length > 0;
   const totalCount = logs.length;
+  // لا نتائج = لم تُرفع أي صفحة؛ ليس نجاحاً
+  const hasErrors = errorLogs.length > 0 || totalCount === 0;
 
   const getTroubleshootingAdvice = (errorMessage: string) => {
     if (
@@ -100,9 +101,11 @@ export default function ResultsScreen({
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900">
-              {hasErrors
-                ? "اكتملت العملية مع وجود بعض الأخطاء"
-                : "تمت عملية معالجة ورفع الكتاب بنجاح تام!"}
+              {totalCount === 0
+                ? "لم تُرفع أي صفحة"
+                : hasErrors
+                  ? "اكتملت العملية مع وجود بعض الأخطاء"
+                  : "تمت عملية معالجة ورفع الكتاب بنجاح تام!"}
             </h2>
             <p className="mt-1 text-sm text-slate-600">
               إجمالي الصفحات: <span className="font-semibold">{totalCount}</span> | الناجحة:{" "}
@@ -112,7 +115,7 @@ export default function ResultsScreen({
           </div>
         </div>
         <div className="flex w-full items-center gap-3 md:w-auto">
-          {hasErrors && (
+          {errorLogs.length > 0 && (
             <button
               onClick={onRetryFailed}
               className="flex-1 gap-2 rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-amber-700 md:flex-none"
@@ -129,7 +132,7 @@ export default function ResultsScreen({
         </div>
       </div>
 
-      {hasErrors ? (
+      {errorLogs.length > 0 ? (
         <div className="space-y-4">
           <h3 className="text-base font-bold text-slate-900">سجل الأخطاء والتشخيص الفوري:</h3>
           <div className="space-y-3">
@@ -138,7 +141,9 @@ export default function ResultsScreen({
               return (
                 <div key={index} className="space-y-2 rounded-xl border border-rose-200 bg-rose-50/60 p-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-rose-900">صفحة رقم ({log.pageNumber})</span>
+                    <span className="text-sm font-bold text-rose-900">
+                      {log.pageNumber > 0 ? `صفحة رقم (${log.pageNumber})` : "فشل قبل معالجة الصفحات"}
+                    </span>
                     <span className="rounded-lg bg-rose-100 px-2.5 py-1 text-xs font-medium text-rose-700">فشلت</span>
                   </div>
                   <div className="grid grid-cols-1 gap-3 pt-1 text-xs md:grid-cols-2">
@@ -159,9 +164,11 @@ export default function ResultsScreen({
       ) : (
         <div className="space-y-2 rounded-2xl border border-slate-200/60 bg-slate-50 p-8 text-center">
           <p className="font-medium text-slate-700">
-            جميع صفحات الكتاب تم تقطيعها، تسميتها بدقة، ورفعها إلى السحاب وقاعدة البيانات بنجاح.
+            {totalCount === 0
+              ? "لم تكتمل أي صفحة — راجع السجل وأعد المحاولة."
+              : "جميع صفحات الكتاب تم تقطيعها، تسميتها بدقة، ورفعها إلى السحاب وقاعدة البيانات بنجاح."}
           </p>
-          {onViewGallery && (
+          {onViewGallery && totalCount > 0 && (
             <>
               <p className="text-xs text-slate-400">
                 يمكنك الانتقال فوراً إلى تبويب "معاينة الصور المسجلة" للتأكد من تسلسلها.
