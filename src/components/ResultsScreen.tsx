@@ -11,7 +11,7 @@ interface Props {
   logs: ResultLog[];
   onRetryFailed: () => void;
   onReset: () => void;
-  onViewGallery: () => void;
+  onViewGallery?: () => void;
 }
 
 export default function ResultsScreen({
@@ -22,10 +22,27 @@ export default function ResultsScreen({
 }: Props) {
   const successCount = logs.filter((l) => l.status === "success").length;
   const errorLogs = logs.filter((l) => l.status === "error");
-  const hasErrors = errorLogs.length > 0;
   const totalCount = logs.length;
+  // لا نتائج = لم تُرفع أي صفحة؛ ليس نجاحاً
+  const hasErrors = errorLogs.length > 0 || totalCount === 0;
 
   const getTroubleshootingAdvice = (errorMessage: string) => {
+    if (
+      errorMessage.includes("(404)") ||
+      errorMessage.includes("Failed to send a request to the Edge Function") ||
+      (errorMessage.includes("Ingest") && errorMessage.includes("Failed to fetch"))
+    ) {
+      return {
+        cause: "خدمة الاستقبال (Edge Function) غير منشورة أو عنوانها غير صحيح",
+        fix: "انشر الدالة عبر supabase functions deploy curriculum-ingest --no-verify-jwt، واضبط INGEST_ADMIN_TOKEN، ثم تأكد من مطابقة الرابط في الإعدادات → رفع إلى سراج.",
+      };
+    }
+    if (errorMessage.includes("(401)") || errorMessage.includes("Unauthorized")) {
+      return {
+        cause: "التوكن الإداري غير صحيح (رفضته خدمة الاستقبال)",
+        fix: "تأكد من تطابق التوكن في الإعدادات مع قيمة INGEST_ADMIN_TOKEN المضبوطة في أسرار Supabase.",
+      };
+    }
     if (
       errorMessage.includes("row-level security") ||
       errorMessage.includes("RLS") ||
@@ -100,9 +117,11 @@ export default function ResultsScreen({
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900">
-              {hasErrors
-                ? "اكتملت العملية مع وجود بعض الأخطاء"
-                : "تمت عملية معالجة ورفع الكتاب بنجاح تام!"}
+              {totalCount === 0
+                ? "لم تُرفع أي صفحة"
+                : hasErrors
+                  ? "اكتملت العملية مع وجود بعض الأخطاء"
+                  : "تمت عملية معالجة ورفع الكتاب بنجاح تام!"}
             </h2>
             <p className="mt-1 text-sm text-slate-600">
               إجمالي الصفحات: <span className="font-semibold">{totalCount}</span> | الناجحة:{" "}
@@ -112,7 +131,7 @@ export default function ResultsScreen({
           </div>
         </div>
         <div className="flex w-full items-center gap-3 md:w-auto">
-          {hasErrors && (
+          {errorLogs.length > 0 && (
             <button
               onClick={onRetryFailed}
               className="flex-1 gap-2 rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-amber-700 md:flex-none"
@@ -129,7 +148,7 @@ export default function ResultsScreen({
         </div>
       </div>
 
-      {hasErrors ? (
+      {errorLogs.length > 0 ? (
         <div className="space-y-4">
           <h3 className="text-base font-bold text-slate-900">سجل الأخطاء والتشخيص الفوري:</h3>
           <div className="space-y-3">
@@ -138,13 +157,20 @@ export default function ResultsScreen({
               return (
                 <div key={index} className="space-y-2 rounded-xl border border-rose-200 bg-rose-50/60 p-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-rose-900">صفحة رقم ({log.pageNumber})</span>
+                    <span className="text-sm font-bold text-rose-900">
+                      {log.pageNumber > 0 ? `صفحة رقم (${log.pageNumber})` : "فشل قبل معالجة الصفحات"}
+                    </span>
                     <span className="rounded-lg bg-rose-100 px-2.5 py-1 text-xs font-medium text-rose-700">فشلت</span>
                   </div>
                   <div className="grid grid-cols-1 gap-3 pt-1 text-xs md:grid-cols-2">
                     <div className="rounded-lg border border-rose-100 bg-white/80 p-3">
                       <span className="mb-1 block font-bold text-slate-700">السبب المحتمل:</span>
                       <span className="break-all font-mono text-rose-700">{diagnosis.cause}</span>
+                      {log.message && log.message !== diagnosis.cause && (
+                        <span className="mt-2 block break-all font-mono text-[11px] text-slate-500">
+                          {log.message}
+                        </span>
+                      )}
                     </div>
                     <div className="rounded-lg border border-emerald-100 bg-white/80 p-3">
                       <span className="mb-1 block font-bold text-slate-700">كيفية الإصلاح:</span>
@@ -159,14 +185,20 @@ export default function ResultsScreen({
       ) : (
         <div className="space-y-2 rounded-2xl border border-slate-200/60 bg-slate-50 p-8 text-center">
           <p className="font-medium text-slate-700">
-            جميع صفحات الكتاب تم تقطيعها، تسميتها بدقة، ورفعها إلى السحاب وقاعدة البيانات بنجاح.
+            {totalCount === 0
+              ? "لم تكتمل أي صفحة — راجع السجل وأعد المحاولة."
+              : "جميع صفحات الكتاب تم تقطيعها، تسميتها بدقة، ورفعها إلى السحاب وقاعدة البيانات بنجاح."}
           </p>
-          <p className="text-xs text-slate-400">
-            يمكنك الانتقال فوراً إلى تبويب "معاينة الصور المسجلة" للتأكد من تسلسلها.
-          </p>
-          <button onClick={onViewGallery} className="btn-primary mx-auto mt-4">
-            <GalleryIcon className="h-4 w-4" /> معاينة الصور المرفوعة
-          </button>
+          {onViewGallery && totalCount > 0 && (
+            <>
+              <p className="text-xs text-slate-400">
+                يمكنك الانتقال فوراً إلى تبويب "معاينة الصور المسجلة" للتأكد من تسلسلها.
+              </p>
+              <button onClick={onViewGallery} className="btn-primary mx-auto mt-4">
+                <GalleryIcon className="h-4 w-4" /> معاينة الصور المرفوعة
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

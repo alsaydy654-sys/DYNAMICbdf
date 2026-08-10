@@ -14,6 +14,9 @@ export default function SettingsPanel({ config, onChange }: Props) {
   const updateColumn = (key: keyof AppConfig["columns"], value: string) =>
     onChange({ ...config, columns: { ...config.columns, [key]: value } });
 
+  const updateIngest = (key: keyof AppConfig["ingest"], value: string) =>
+    onChange({ ...config, ingest: { ...config.ingest, [key]: value } });
+
   const handleReset = () => onChange(resetConfig());
 
   const livePreview = previewPath(config);
@@ -110,6 +113,37 @@ export default function SettingsPanel({ config, onChange }: Props) {
                 onChange={(e) => update("renderScale", Number(e.target.value))} />
             </Field>
           </div>
+        </Group>
+
+        {/* Siraj ingestion (admin only) */}
+        <Group title="رفع إلى سراج — وضع إداري" badge="4">
+          <p className="rounded-xl border border-indigo-200 bg-indigo-50/60 px-4 py-3 text-xs leading-5 text-indigo-800">
+            عند تعبئة الحقلين يظهر تبويب «رفع إلى سراج» الذي يرفع الكتب عبر طبقة استقبال معزولة
+            (schema مستقل + حاوية مستقلة)، ثم يُضيف الكتاب إلى سراج كدرس جديد دون مساس بأي بيانات قائمة.
+            التوكن يُحفظ في متصفّحك فقط ولا يُدمج في ملفات البناء؛ اتركه فارغاً لإخفاء الوضع الإداري تماماً.
+          </p>
+          <Field
+            label="عنوان خدمة الاستقبال (Edge Function)"
+            hint="مثال: https://xxxx.supabase.co/functions/v1/curriculum-ingest"
+          >
+            <input
+              className="input"
+              value={config.ingest.functionUrl}
+              onChange={(e) => updateIngest("functionUrl", e.target.value)}
+              placeholder="https://xxxx.supabase.co/functions/v1/curriculum-ingest"
+              dir="ltr"
+            />
+          </Field>
+          <Field label="التوكن الإداري (INGEST_ADMIN_TOKEN)">
+            <input
+              className="input"
+              type="password"
+              value={config.ingest.adminToken}
+              onChange={(e) => updateIngest("adminToken", e.target.value)}
+              placeholder="••••••••••••"
+              dir="ltr"
+            />
+          </Field>
         </Group>
 
         <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
