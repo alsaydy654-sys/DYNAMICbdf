@@ -12,6 +12,14 @@ export interface TableColumnMapping {
   fileSize: string;
 }
 
+/** إعدادات طبقة الاستقبال الإدارية (وضع سراج). فارغة = معطّلة ومخفية. */
+export interface IngestConfig {
+  /** عنوان Edge Function المنشورة curriculum-ingest */
+  functionUrl: string;
+  /** توكن إداري يُحفظ محلياً فقط، ولا يُدمج في البناء */
+  adminToken: string;
+}
+
 export interface AppConfig {
   storageBucket: string;
   /** Root base path, e.g. "المناهج/صنعاء". Grade/Term/filename auto-appended. */
@@ -25,6 +33,7 @@ export interface AppConfig {
   jpegQuality: number;
   /** Render scale for PDF -> image (CSS pixels multiplier) */
   renderScale: number;
+  ingest: IngestConfig;
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -47,6 +56,10 @@ export const DEFAULT_CONFIG: AppConfig = {
   imageFormat: "image/jpeg",
   jpegQuality: 0.85,
   renderScale: 1.5,
+  ingest: {
+    functionUrl: "",
+    adminToken: "",
+  },
 };
 
 export type LogLevel = "info" | "success" | "warning" | "error";

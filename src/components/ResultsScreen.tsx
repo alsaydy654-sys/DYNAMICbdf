@@ -11,7 +11,7 @@ interface Props {
   logs: ResultLog[];
   onRetryFailed: () => void;
   onReset: () => void;
-  onViewGallery: () => void;
+  onViewGallery?: () => void;
 }
 
 export default function ResultsScreen({
@@ -161,12 +161,16 @@ export default function ResultsScreen({
           <p className="font-medium text-slate-700">
             جميع صفحات الكتاب تم تقطيعها، تسميتها بدقة، ورفعها إلى السحاب وقاعدة البيانات بنجاح.
           </p>
-          <p className="text-xs text-slate-400">
-            يمكنك الانتقال فوراً إلى تبويب "معاينة الصور المسجلة" للتأكد من تسلسلها.
-          </p>
-          <button onClick={onViewGallery} className="btn-primary mx-auto mt-4">
-            <GalleryIcon className="h-4 w-4" /> معاينة الصور المرفوعة
-          </button>
+          {onViewGallery && (
+            <>
+              <p className="text-xs text-slate-400">
+                يمكنك الانتقال فوراً إلى تبويب "معاينة الصور المسجلة" للتأكد من تسلسلها.
+              </p>
+              <button onClick={onViewGallery} className="btn-primary mx-auto mt-4">
+                <GalleryIcon className="h-4 w-4" /> معاينة الصور المرفوعة
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

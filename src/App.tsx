@@ -3,14 +3,18 @@ import { AppConfig } from "./types";
 import { loadConfig, saveConfig } from "./config";
 import SettingsPanel from "./components/SettingsPanel";
 import Uploader from "./components/Uploader";
+import SirajUploader from "./components/SirajUploader";
 import GalleryView from "./components/GalleryView";
 import { SparkleIcon } from "./components/icons";
 
-type Tab = "processor" | "gallery" | "settings";
+type Tab = "processor" | "siraj" | "gallery" | "settings";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>("processor");
   const [config, setConfig] = useState<AppConfig>(() => loadConfig());
+
+  /* وضع سراج إداري: لا يظهر إلا لمن أدخل توكن الاستقبال في إعدادات متصفّحه */
+  const sirajEnabled = !!config.ingest.functionUrl.trim() && !!config.ingest.adminToken.trim();
 
   const handleConfigChange = (next: AppConfig) => {
     setConfig(next);
@@ -51,6 +55,18 @@ export default function App() {
           >
             معالجة ورفع الكتب
           </button>
+          {sirajEnabled && (
+            <button
+              onClick={() => setActiveTab("siraj")}
+              className={`pb-3 px-6 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === "siraj"
+                  ? "border-indigo-600 text-indigo-600"
+                  : "border-transparent text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              رفع إلى سراج (إداري)
+            </button>
+          )}
           <button
             onClick={() => setActiveTab("gallery")}
             className={`pb-3 px-6 font-medium text-sm border-b-2 transition-colors ${
@@ -76,6 +92,7 @@ export default function App() {
         {activeTab === "processor" && (
           <Uploader config={config} onViewGallery={() => setActiveTab("gallery")} />
         )}
+        {activeTab === "siraj" && sirajEnabled && <SirajUploader config={config} />}
         {activeTab === "gallery" && <GalleryView config={config} />}
         {activeTab === "settings" && (
           <SettingsPanel config={config} onChange={handleConfigChange} />

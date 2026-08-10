@@ -1,4 +1,9 @@
 /*
+  ⚠️ لا تُشغّل هذا الملف على مشروع «سراج».
+  هو مخصص للوضع المستقل (جدول textbook_pages الخاص بهذا التطبيق) لمشروع Supabase فارغ.
+  للرفع إلى سراج استخدم بدلاً منه: supabase/migrations/20260808_ingest_schema.sql
+  والدليل في supabase/SIRAJ_INGEST.md.
+
   إعداد كامل وقابل لإعادة التشغيل لمشروع Supabase جديد.
   شغّله مرة واحدة من: Supabase Dashboard → SQL Editor → New query → Run.
   يجمع كل ملفات supabase/migrations في ملف واحد.

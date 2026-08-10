@@ -74,6 +74,7 @@ export function loadConfig(): AppConfig {
       ...DEFAULT_CONFIG,
       ...parsed,
       columns: { ...DEFAULT_CONFIG.columns, ...(parsed.columns ?? {}) },
+      ingest: { ...DEFAULT_CONFIG.ingest, ...(parsed.ingest ?? {}) },
     };
   } catch {
     return { ...DEFAULT_CONFIG };
