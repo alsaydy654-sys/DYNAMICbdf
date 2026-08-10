@@ -2,6 +2,8 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { AppConfig, LogEntry, LogLevel, PageRecord, ResultLog } from "../types";
 import { parsePdfToImages } from "../lib/pdf";
 import { syncPage } from "../lib/sync";
+import { supabaseConfigError } from "../lib/supabase";
+import { isPermanentError } from "../lib/retry";
 import { GRADES, TERMS } from "../constants";
 import { previewPath } from "../config";
 import ProgressLog from "./ProgressLog";
@@ -61,7 +63,7 @@ export default function Uploader({ config, onViewGallery }: Props) {
     setFile(f);
   };
 
-  const canStart = !!file && !running;
+  const canStart = !!file && !running && !supabaseConfigError;
   const livePreview = previewPath(config, grade, term);
 
   const mergeResults = (newResults: ResultLog[]) =>
@@ -109,6 +111,11 @@ export default function Uploader({ config, onViewGallery }: Props) {
       const msg = err instanceof Error ? err.message : String(err);
       updatePage(rec.index, { status: "failed", error: msg });
       pushLog("error", `فشل ${rec.fileName}: ${msg}`);
+      // خطأ إعداد/صلاحيات سيتكرر في كل صفحة — أوقف العملية بدل إرهاق المستخدم
+      if (isPermanentError(err)) {
+        cancelRef.current = true;
+        pushLog("error", "تم إيقاف العملية: الخطأ يتعلق بالإعدادات أو الصلاحيات وليس بالشبكة، فإعادة المحاولة لن تفيد.");
+      }
       return { pageNumber: rec.pageNumber, status: "error", message: msg };
     }
   };
@@ -129,6 +136,11 @@ export default function Uploader({ config, onViewGallery }: Props) {
 
   const handleStart = async () => {
     if (!file) return;
+    if (supabaseConfigError) {
+      setPhase("processing");
+      pushLog("error", supabaseConfigError);
+      return;
+    }
     cancelRef.current = false;
     setRunning(true);
     setPhase("processing");
@@ -239,6 +251,15 @@ export default function Uploader({ config, onViewGallery }: Props) {
         </header>
 
         <div className="space-y-5 px-5 py-5">
+          {supabaseConfigError && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              <p className="font-bold">تعذّر الاتصال بـ Supabase</p>
+              <p className="mt-1">{supabaseConfigError}</p>
+              <p className="mt-1 text-xs text-rose-600">
+                اضبط المتغيّرين في بيئة البناء (Vercel / GitHub Secrets / ملف .env) ثم أعد بناء التطبيق — القيم تُدمج وقت البناء.
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <label className="label">الصف</label>

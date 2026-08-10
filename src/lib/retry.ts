@@ -22,8 +22,26 @@ const TRANSIENT_PATTERNS = [
   /\b(408|425|429|500|502|503|504)\b/,
 ];
 
+/** Configuration/credential failures — retrying them only wastes the user's time. */
+const PERMANENT_PATTERNS = [
+  /invalid compact jws/i,
+  /jwt/i,
+  /invalid api key/i,
+  /api key/i,
+  /unauthorized/i,
+  /\b(400|401|403|404)\b/,
+  /row-level security/i,
+  /bucket not found/i,
+];
+
+export function isPermanentError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return PERMANENT_PATTERNS.some((re) => re.test(message));
+}
+
 /** Errors worth retrying: connectivity blips and server-side throttling. */
 export function isTransientError(error: unknown): boolean {
+  if (isPermanentError(error)) return false;
   if (typeof navigator !== "undefined" && navigator.onLine === false) return true;
   const message = error instanceof Error ? error.message : String(error);
   return TRANSIENT_PATTERNS.some((re) => re.test(message));
